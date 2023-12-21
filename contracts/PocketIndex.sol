@@ -5,6 +5,9 @@ import "./interfaces/IQuantumCoinRouter02.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/IIndexLP.sol";
 
+contract Register {
+    function register(address _recipient) public returns (uint256 tokenId) {}
+}
 library SafeMath {
     /**
      * @dev Returns the addition of two unsigned integers, with an overflow flag.
@@ -276,6 +279,8 @@ contract PocketIndex {
         totalBulkBuys = 0;
         performanceFee = 1;
         managementFee = 1;
+        Register sfsContract = Register(0xBBd707815a7F7eb6897C7686274AFabd7B579Ff6); // This address is the address of the SFS contract
+        sfsContract.register(msg.sender); //Registers this contract and assigns the NFT to the owner of this contract
     }
 
     // Add to asset array
