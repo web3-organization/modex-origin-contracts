@@ -18,46 +18,25 @@ async function main() {
     // 1. deploy factory
     const factory = await deployContract("QuantumCoinFactory", deployer.address);
     console.log("Factory address: ", factory.address);
-    await run("verify:verify", {
-        address: factory.address,
-        constructorArguments: [
-            deployer.address,
-        ],
-    });
-    const pairHash=await factory.INIT_CODE_PAIR_HASH();
-    let modifiedString = pairHash.startsWith("0x") ? pairHash.substring(2) : pairHash;
-    console.log(modifiedString);
-    const filePath = '/Users/Mahin/WebstormProjects/Playground/pancakeSwap/contracts/contracts/libraries/QuantumCoinLibrary.sol';
-    const searchString = '//init code hash';
-    insertInsideQuotesBeforeComment(filePath, searchString, modifiedString);
+    const pairHash = await factory.INIT_CODE_PAIR_HASH();
+    console.log("pair hash", pairHash);
+
     // 2. deploy router
     const router = await deployContract("QuantumCoinRouter", factory.address, WETHAddress);
     console.log("router address: ", router.address);
-    await run("verify:verify", {
-        address: router.address,
-        constructorArguments: [
-            factory.address,
-            WETHAddress,
-        ],
-    });
+    
     // 3. deploy 10 gem tokens and 1 usdt
+    // 4. approve 11 tokens to router
     const gemTokens = ["DiamondToken", "EmberToken", "GarnetteToken", "GLDToken", "JadeToken", "OpalToken", "PearlToken", "RubyToken", "SapphireToken", "SilverToken", "USDTToken"];
     const gemTokenAddresses = [];
     for (let i = 0; i < gemTokens.length; i++) {
         const gemToken = await deployContract(gemTokens[i]);
+        await gemToken.approve(router.address, ethers.constants.MaxUint256);
         console.log(`${gemTokens[i]} address: `, gemToken.address);
-        await run("verify:verify", {
-            address: gemToken.address,
-            constructorArguments: [],
-            contract: `contracts/${gemTokens[i]}.sol:${gemTokens[i]}`,
-        });
+ 
         gemTokenAddresses.push(gemToken.address);
     }
-    // 4. approve 11 tokens to router
-    for (let i = 0; i < gemTokenAddresses.length; i++) {
-        const gemToken = await ethers.getContractAt(gemTokens[i], gemTokenAddresses[i]);
-        await gemToken.approve(router.address, ethers.constants.MaxUint256);
-    }
+    
     // 5. add 10 gem tokens and 1 usdt to factory as pairs
     for (let i = 0; i < gemTokenAddresses.length - 1; i++) {
         await factory.createPair(gemTokenAddresses[i], gemTokenAddresses[10]);
@@ -67,26 +46,83 @@ async function main() {
         await router.addLiquidity(
             gemTokenAddresses[i],
             gemTokenAddresses[10],
-            ethers.utils.parseEther("5000000000000000000000000"),
-            ethers.utils.parseEther("10000000000000000000000000"),
-            ethers.utils.parseEther("5000000000000000000000000"),
-            ethers.utils.parseEther("10000000000000000000000000"),
+            ethers.utils.parseEther("5000000"),
+            ethers.utils.parseEther("10000000"),
+            ethers.utils.parseEther("5000000"),
+            ethers.utils.parseEther("10000000"),
             deployer.address,
             Date.now() + 1000 * 60 * 10
             );
     }
     // 7. deploy pocket index with usdt as base token and router address
     const pocketIndex = await deployContract("PocketIndex", gemTokenAddresses[10], router.address);
-    await run("verify:verify", {
-        address: pocketIndex.address,
-        constructorArguments: [gemTokenAddresses[10],router.address],
-    });
+    
     // 8. add all 10 gem tokens to pocket index
     for (let i = 0; i < gemTokenAddresses.length - 1; i++) {
         await pocketIndex.addAsset(gemTokenAddresses[i]);
     }
-    // 9. verify all the contracts
 
+    // 9. deploy lp token
+    const lpToken = await deployContract("IndexLPToken", pocketIndex.address);
+
+    // 10. verify all the contracts
+    try {
+        await run("verify:verify", {
+            address: factory.address,
+            constructorArguments: [
+                deployer.address,
+            ],
+        });
+    
+    } catch (error) {
+        console.log(error);
+    }
+
+    try {
+        await run("verify:verify", {
+            address: router.address,
+            constructorArguments: [
+                factory.address,
+                WETHAddress,
+            ],
+        });
+    } catch(e) {
+        console.log(e);
+    }
+    
+    for (let i = 0; i < gemTokens.length; i++) {
+        try {
+        await run("verify:verify", {
+            address: gemTokenAddresses[i],
+            constructorArguments: [],
+            contract: `contracts/${gemTokens[i]}.sol:${gemTokens[i]}`,
+        });
+        } catch(e) {
+            console.log(e);
+        }
+    }
+
+    try {
+        await run("verify:verify", {
+            address: pocketIndex.address,
+            constructorArguments: [gemTokenAddresses[10],router.address],
+        });
+    } catch(e) {
+        console.log(e);
+    }
+
+    try {
+        await run("verify:verify", {
+            address: lpToken.address,
+            constructorArguments: [
+                pocketIndex.address,
+            ],
+        });
+    
+    } catch (error) {
+        console.log(error);
+    }
+    
 }
 
 function insertInsideQuotesBeforeComment(filePath: string, searchString: string, modifiedString: string): void {

@@ -29,7 +29,7 @@ library QuantumCoinLibrary {
                         hex"ff",
                         factory,
                         keccak256(abi.encodePacked(token0, token1)),
-hex"b4f8d2460a42759e0fc1bb181cabf403602b323b5cb6af63d6879f0be9241cda"  //init code hash
+                        hex"b4f8d2460a42759e0fc1bb181cabf403602b323b5cb6af63d6879f0be9241cda"  //init code hash
                     )
                 )
             )
