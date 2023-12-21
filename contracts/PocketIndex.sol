@@ -1,377 +1,20 @@
 // SPDX-License-Identifier: UNLICENSED
 
 pragma solidity ^0.8.0;
+import "./interfaces/IQuantumCoinRouter02.sol";
+import "./interfaces/IERC20.sol";
+import "./interfaces/IIndexLP.sol";
+import "./libraries/SafeMath.sol";
 
-// pragma solidity >=0.6.2;
-
-interface ITraderJoeRouter01 {
-    function factory() external pure returns (address);
-
-    function swapExactTokensForTokens(
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external returns (uint256[] memory amounts);
-
-    function getAmountsOut(uint256 amountIn, address[] calldata path)
-        external
-        view
-        returns (uint256[] memory amounts);
-}
-
-interface ITraderJoeRouter02 is ITraderJoeRouter01 {}
-
-// pragma solidity >=0.5.0;
-
-interface ITraderJoeFactory {
-    event PairCreated(
-        address indexed token0,
-        address indexed token1,
-        address pair,
-        uint256
-    );
-
-    function feeTo() external view returns (address);
-
-    function feeToSetter() external view returns (address);
-
-    function getPair(address tokenA, address tokenB)
-        external
-        view
-        returns (address pair);
-
-    function allPairs(uint256) external view returns (address pair);
-
-    function allPairsLength() external view returns (uint256);
-
-    function createPair(address tokenA, address tokenB)
-        external
-        returns (address pair);
-
-    function setFeeTo(address) external;
-
-    function setFeeToSetter(address) external;
-}
-
-interface IERC20Extended {
-    function totalSupply() external view returns (uint256);
-
-    function decimals() external view returns (uint8);
-
-    function symbol() external view returns (string memory);
-
-    function name() external view returns (string memory);
-
-    function balanceOf(address account) external view returns (uint256);
-
-    function transfer(address recipient, uint256 amount)
-        external
-        returns (bool);
-
-    function allowance(address _owner, address spender)
-        external
-        view
-        returns (uint256);
-
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) external returns (bool);
-
-    event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
-}
-
-library SafeMath {
-    /**
-     * @dev Returns the addition of two unsigned integers, with an overflow flag.
-     *
-     * _Available since v3.4._
-     */
-    function tryAdd(uint256 a, uint256 b)
-        internal
-        pure
-        returns (bool, uint256)
-    {
-        unchecked {
-            uint256 c = a + b;
-            if (c < a) return (false, 0);
-            return (true, c);
-        }
-    }
-
-    /**
-     * @dev Returns the substraction of two unsigned integers, with an overflow flag.
-     *
-     * _Available since v3.4._
-     */
-    function trySub(uint256 a, uint256 b)
-        internal
-        pure
-        returns (bool, uint256)
-    {
-        unchecked {
-            if (b > a) return (false, 0);
-            return (true, a - b);
-        }
-    }
-
-    /**
-     * @dev Returns the multiplication of two unsigned integers, with an overflow flag.
-     *
-     * _Available since v3.4._
-     */
-    function tryMul(uint256 a, uint256 b)
-        internal
-        pure
-        returns (bool, uint256)
-    {
-        unchecked {
-            // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
-            // benefit is lost if 'b' is also tested.
-            // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
-            if (a == 0) return (true, 0);
-            uint256 c = a * b;
-            if (c / a != b) return (false, 0);
-            return (true, c);
-        }
-    }
-
-    /**
-     * @dev Returns the division of two unsigned integers, with a division by zero flag.
-     *
-     * _Available since v3.4._
-     */
-    function tryDiv(uint256 a, uint256 b)
-        internal
-        pure
-        returns (bool, uint256)
-    {
-        unchecked {
-            if (b == 0) return (false, 0);
-            return (true, a / b);
-        }
-    }
-
-    /**
-     * @dev Returns the remainder of dividing two unsigned integers, with a division by zero flag.
-     *
-     * _Available since v3.4._
-     */
-    function tryMod(uint256 a, uint256 b)
-        internal
-        pure
-        returns (bool, uint256)
-    {
-        unchecked {
-            if (b == 0) return (false, 0);
-            return (true, a % b);
-        }
-    }
-
-    /**
-     * @dev Returns the addition of two unsigned integers, reverting on
-     * overflow.
-     *
-     * Counterpart to Solidity's `+` operator.
-     *
-     * Requirements:
-     *
-     * - Addition cannot overflow.
-     */
-    function add(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a + b;
-    }
-
-    /**
-     * @dev Returns the subtraction of two unsigned integers, reverting on
-     * overflow (when the result is negative).
-     *
-     * Counterpart to Solidity's `-` operator.
-     *
-     * Requirements:
-     *
-     * - Subtraction cannot overflow.
-     */
-    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a - b;
-    }
-
-    /**
-     * @dev Returns the multiplication of two unsigned integers, reverting on
-     * overflow.
-     *
-     * Counterpart to Solidity's `*` operator.
-     *
-     * Requirements:
-     *
-     * - Multiplication cannot overflow.
-     */
-    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a * b;
-    }
-
-    /**
-     * @dev Returns the integer division of two unsigned integers, reverting on
-     * division by zero. The result is rounded towards zero.
-     *
-     * Counterpart to Solidity's `/` operator.
-     *
-     * Requirements:
-     *
-     * - The divisor cannot be zero.
-     */
-    function div(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a / b;
-    }
-
-    /**
-     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
-     * reverting when dividing by zero.
-     *
-     * Counterpart to Solidity's `%` operator. This function uses a `revert`
-     * opcode (which leaves remaining gas untouched) while Solidity uses an
-     * invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     *
-     * - The divisor cannot be zero.
-     */
-    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a % b;
-    }
-
-    /**
-     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on
-     * overflow (when the result is negative).
-     *
-     * CAUTION: This function is deprecated because it requires allocating memory for the error
-     * message unnecessarily. For custom revert reasons use {trySub}.
-     *
-     * Counterpart to Solidity's `-` operator.
-     *
-     * Requirements:
-     *
-     * - Subtraction cannot overflow.
-     */
-    function sub(
-        uint256 a,
-        uint256 b,
-        string memory errorMessage
-    ) internal pure returns (uint256) {
-        unchecked {
-            require(b <= a, errorMessage);
-            return a - b;
-        }
-    }
-
-    /**
-     * @dev Returns the integer division of two unsigned integers, reverting with custom message on
-     * division by zero. The result is rounded towards zero.
-     *
-     * Counterpart to Solidity's `/` operator. Note: this function uses a
-     * `revert` opcode (which leaves remaining gas untouched) while Solidity
-     * uses an invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     *
-     * - The divisor cannot be zero.
-     */
-    function div(
-        uint256 a,
-        uint256 b,
-        string memory errorMessage
-    ) internal pure returns (uint256) {
-        unchecked {
-            require(b > 0, errorMessage);
-            return a / b;
-        }
-    }
-
-    /**
-     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
-     * reverting with custom message when dividing by zero.
-     *
-     * CAUTION: This function is deprecated because it requires allocating memory for the error
-     * message unnecessarily. For custom revert reasons use {tryMod}.
-     *
-     * Counterpart to Solidity's `%` operator. This function uses a `revert`
-     * opcode (which leaves remaining gas untouched) while Solidity uses an
-     * invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     *
-     * - The divisor cannot be zero.
-     */
-    function mod(
-        uint256 a,
-        uint256 b,
-        string memory errorMessage
-    ) internal pure returns (uint256) {
-        unchecked {
-            require(b > 0, errorMessage);
-            return a % b;
-        }
-    }
-}
-
-interface IIndexLPToken {
-    function totalSupply() external view returns (uint256);
-
-    function decimals() external view returns (uint8);
-
-    function symbol() external view returns (string memory);
-
-    function name() external view returns (string memory);
-
-    function balanceOf(address account) external view returns (uint256);
-
-    function transfer(address recipient, uint256 amount)
-        external
-        returns (bool);
-
-    function allowance(address _owner, address spender)
-        external
-        view
-        returns (uint256);
-
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) external returns (bool);
-
-    event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
-
-    function burn(uint256 amount) external;
-
-    function mint(address to, uint256 amount) external;
-}
 
 contract PocketIndex {
     using SafeMath for uint256;
 
     address routerAddress;
-    IERC20Extended public baseTokenAddress;
-    IIndexLPToken public indexLPToken;
+    IERC20 public baseTokenAddress;
+    IIndexLP public indexLPToken;
     address owner;
-    ITraderJoeRouter02 router;
+    IQuantumCoinRouter02 router;
 
     uint256 public lastBuyTime;
     uint256 public managementFee;
@@ -395,21 +38,11 @@ contract PocketIndex {
     Asset[] assets;
     address[] nextBuyers;
 
-    constructor() {
-        routerAddress = 0x7E3411B04766089cFaa52DB688855356A12f05D1;
-        baseTokenAddress = IERC20Extended(
-            0x08a978a0399465621e667C49CD54CC874DC064Eb
-        );
-        router = ITraderJoeRouter02(routerAddress);
+    constructor(address _routerAddress, address _baseTokenAddress) {
+        routerAddress = _routerAddress;
+        baseTokenAddress = IERC20(_baseTokenAddress);
+        router = IQuantumCoinRouter02(routerAddress);
         owner = msg.sender;
-        addAsset(0x2542250239e4800B89e47A813cD2B478822b2385);
-        addAsset(0xaA4a71E82dB082b9B16d4df90b0443D83941BEC4);
-        addAsset(0xeFf581Ca1f9B49F49A183cD4f25F69776FA0EbF4);
-        addAsset(0xD38a71E2021105fB8eFF71378B5f74abA8C4738F);
-        addAsset(0x5C9796c4BcDc48B935421661002d7f3e9E3b822a);
-        addAsset(0x299D57d6f674814893B8b34EB635e3add5Fab1F7);
-        addAsset(0xf672c3cDD3C143C05Aada34f50d4ad519558994F);
-        addAsset(0xEdDEB2ff49830f3aa30Fee2F7FaBC5136845304a);
         totalBulkBuys = 0;
         performanceFee = 1;
         managementFee = 1;
@@ -453,7 +86,9 @@ contract PocketIndex {
             // Current worth of all assets
             uint256 totalCurrentWorth = totalCurrentBalance;
             totalCurrentWorth += currentWorth();
-            uint256 ratio = totalCurrentBalance.mul(1000).div(totalCurrentWorth);
+            uint256 ratio = totalCurrentBalance.mul(1000).div(
+                totalCurrentWorth
+            );
             uint256 denominator = one.sub(ratio);
             uint256 newTotalLP = totalLp.mul(1000).div(denominator);
             indexLPToken.mint(address(this), newTotalLP.sub(totalLp));
@@ -474,7 +109,7 @@ contract PocketIndex {
         // Note current balances of all assets
         for (uint256 j = 0; j < totalAssets; j++) {
             // Get the amount of tokens the contract has
-            currentBalances[j] = IERC20Extended(assets[j].contractAddress)
+            currentBalances[j] = IERC20(assets[j].contractAddress)
                 .balanceOf(address(this));
         }
 
@@ -510,7 +145,7 @@ contract PocketIndex {
             // Each asset
             for (uint256 j = 0; j < totalAssets; j++) {
                 // Get the amount of tokens the user has
-                uint256 assetBalanceOfContract = IERC20Extended(
+                uint256 assetBalanceOfContract = IERC20(
                     assets[j].contractAddress
                 ).balanceOf(address(this)).sub(currentBalances[j]);
                 userBalances[nextBuyers[i]].balances[
@@ -535,9 +170,9 @@ contract PocketIndex {
 
         // Loop and sell each asset
         for (uint256 i = 0; i < totalAssets; i++) {
-            IERC20Extended(assets[i].contractAddress).approve(
+            IERC20(assets[i].contractAddress).approve(
                 routerAddress,
-                IERC20Extended(assets[i].contractAddress).balanceOf(
+                IERC20(assets[i].contractAddress).balanceOf(
                     address(this)
                 )
             );
@@ -607,7 +242,8 @@ contract PocketIndex {
             path[0] = assets[i].contractAddress;
             uint256 userBalance = userBalances[msg.sender]
                 .balances[assets[i].contractAddress]
-                .mul(ratio).div(100);
+                .mul(ratio)
+                .div(100);
             router.swapExactTokensForTokens(
                 userBalance,
                 0,
@@ -669,7 +305,7 @@ contract PocketIndex {
         for (uint256 i = 0; i < assets.length; i++) {
             path[0] = assets[i].contractAddress;
             uint256[] memory amounts = router.getAmountsOut(
-                IERC20Extended(assets[i].contractAddress).balanceOf(
+                IERC20(assets[i].contractAddress).balanceOf(
                     address(this)
                 ),
                 path
@@ -710,11 +346,10 @@ contract PocketIndex {
     }
 
     // Get user's balance for a specific asset
-    function getBalance(address user, address _contractAddress)
-        public
-        view
-        returns (uint256)
-    {
+    function getBalance(
+        address user,
+        address _contractAddress
+    ) public view returns (uint256) {
         return userBalances[address(user)].balances[_contractAddress];
     }
 
@@ -739,17 +374,15 @@ contract PocketIndex {
     }
 
     // Get total amount invested in a specific asset
-    function getTotalInvestedForAsset(address _contractAddress)
-        public
-        view
-        returns (uint256)
-    {
-        return IERC20Extended(_contractAddress).balanceOf(address(this));
+    function getTotalInvestedForAsset(
+        address _contractAddress
+    ) public view returns (uint256) {
+        return IERC20(_contractAddress).balanceOf(address(this));
     }
 
     // set indexLPToken address
     function setIndexLPToken(address _indexLPToken) public {
-        indexLPToken = IIndexLPToken(_indexLPToken);
+        indexLPToken = IIndexLP(_indexLPToken);
     }
 
     // PRIVATE FUNCTIONS

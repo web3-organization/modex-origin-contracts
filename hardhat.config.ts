@@ -8,7 +8,7 @@ const config: HardhatUserConfig = {
     "mode": {
       url: "https://sepolia.mode.network/",
       chainId: 919,
-      accounts: [""] //BE VERY CAREFUL, DO NOT PUSH THIS TO GITHUB
+      accounts: ["5d7180f7a0c57b29688d9030a9eca8d06babb04bb542ac2e6b0be7a61f6dbc66"] //BE VERY CAREFUL, DO NOT PUSH THIS TO GITHUB
     }
   },
   etherscan: {
