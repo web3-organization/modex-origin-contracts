@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.5.0;
 
-interface IIndexLPToken {
+interface IIndexLP {
     function totalSupply() external view returns (uint256);
 
     function decimals() external view returns (uint8);

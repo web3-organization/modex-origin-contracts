@@ -1,4 +1,5 @@
 import { ethers } from "hardhat";
+import * as fs from 'fs';
 
 
 async function deployContract(contractName: any, ...args: any[]) {
@@ -13,19 +14,43 @@ async function main() {
     // deployer and weth address
     const WETHAddress = '0xeb72756ee12309Eae82a0deb9787e69f5b62949c'; // Replace with actual WETH address
     const deployer = (await ethers.getSigners())[0];
-    // steps: 
+    // steps:
     // 1. deploy factory
     const factory = await deployContract("QuantumCoinFactory", deployer.address);
-    console.log("factory address: ", factory.address);
+    console.log("Factory address: ", factory.address);
+    await run("verify:verify", {
+        address: factory.address,
+        constructorArguments: [
+            deployer.address,
+        ],
+    });
+    const pairHash=await factory.INIT_CODE_PAIR_HASH();
+    let modifiedString = pairHash.startsWith("0x") ? pairHash.substring(2) : pairHash;
+    console.log(modifiedString);
+    const filePath = '/Users/Mahin/WebstormProjects/Playground/pancakeSwap/contracts/contracts/libraries/QuantumCoinLibrary.sol';
+    const searchString = '//init code hash';
+    insertInsideQuotesBeforeComment(filePath, searchString, modifiedString);
     // 2. deploy router
     const router = await deployContract("QuantumCoinRouter", factory.address, WETHAddress);
     console.log("router address: ", router.address);
+    await run("verify:verify", {
+        address: router.address,
+        constructorArguments: [
+            factory.address,
+            WETHAddress,
+        ],
+    });
     // 3. deploy 10 gem tokens and 1 usdt
-    const gemTokens = ["DiamondToken", "EmberToken", "GarnateToken", "GLDToken", "JadeToken", "OpalToken", "PearlToken", "RubyToken", "SaphireToken", "SilverToken", "USDTToken"];
+    const gemTokens = ["DiamondToken", "EmberToken", "GarnetteToken", "GLDToken", "JadeToken", "OpalToken", "PearlToken", "RubyToken", "SapphireToken", "SilverToken", "USDTToken"];
     const gemTokenAddresses = [];
     for (let i = 0; i < gemTokens.length; i++) {
         const gemToken = await deployContract(gemTokens[i]);
         console.log(`${gemTokens[i]} address: `, gemToken.address);
+        await run("verify:verify", {
+            address: gemToken.address,
+            constructorArguments: [],
+            contract: `contracts/${gemTokens[i]}.sol:${gemTokens[i]}`,
+        });
         gemTokenAddresses.push(gemToken.address);
     }
     // 4. approve 11 tokens to router
@@ -40,18 +65,22 @@ async function main() {
     // 6. add liquidity for each gem token and usdt pair for half of the total supply of each token and 1% of the usdt
     for (let i = 0; i < gemTokenAddresses.length - 1; i++) {
         await router.addLiquidity(
-            gemTokenAddresses[i], 
-            gemTokenAddresses[10], 
-            ethers.utils.parseEther("5000000000000000000000000"), 
-            ethers.utils.parseEther("10000000000000000000000000"), 
-            ethers.utils.parseEther("5000000000000000000000000"), 
-            ethers.utils.parseEther("10000000000000000000000000"), 
-            deployer.address, 
+            gemTokenAddresses[i],
+            gemTokenAddresses[10],
+            ethers.utils.parseEther("5000000000000000000000000"),
+            ethers.utils.parseEther("10000000000000000000000000"),
+            ethers.utils.parseEther("5000000000000000000000000"),
+            ethers.utils.parseEther("10000000000000000000000000"),
+            deployer.address,
             Date.now() + 1000 * 60 * 10
             );
     }
     // 7. deploy pocket index with usdt as base token and router address
     const pocketIndex = await deployContract("PocketIndex", gemTokenAddresses[10], router.address);
+    await run("verify:verify", {
+        address: pocketIndex.address,
+        constructorArguments: [gemTokenAddresses[10],router.address],
+    });
     // 8. add all 10 gem tokens to pocket index
     for (let i = 0; i < gemTokenAddresses.length - 1; i++) {
         await pocketIndex.addAsset(gemTokenAddresses[i]);
@@ -60,6 +89,28 @@ async function main() {
 
 }
 
+function insertInsideQuotesBeforeComment(filePath: string, searchString: string, modifiedString: string): void {
+    try {
+        // Read the content of the Solidity file synchronously
+        let data = fs.readFileSync(filePath, 'utf8');
+
+        // Create a regular expression to match the hex expression before the comment
+        const regex = new RegExp(`^(.*${searchString}.*)$`, 'm');
+        const match = data.match(regex);
+        // If a match is found, insert the modified string inside the quotes
+        if (match && match[1]) {
+            const hexExpression = match[1];
+            const modifiedFileContent = data.replace(`${hexExpression}`, `hex"${modifiedString}"  //init code hash`);
+            // Write the modified content back to the file
+            fs.writeFileSync(filePath, modifiedFileContent, 'utf8');
+            console.log('Insertion inside quotes before comment successful.');
+        } else {
+            console.log('Unable to find hex expression before the comment.');
+        }
+    } catch (err) {
+        console.error('Error reading or writing to the file:', err);
+    }
+}
 main()
     .then(() => process.exit(0))
     .catch((error) => {
