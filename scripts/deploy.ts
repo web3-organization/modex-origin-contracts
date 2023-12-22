@@ -57,8 +57,9 @@ async function main() {
             );
     }
     // 7. deploy pocket index with usdt as base token and router address
-    const pocketIndex = await deployContract("PocketIndex", router.address, gemTokenAddresses[10]);
-    
+
+    const pocketIndex = await deployContract("PocketIndex", router.address,gemTokenAddresses[10]);
+
     // 8. add all 10 gem tokens to pocket index
     for (let i = 0; i < gemTokenAddresses.length - 1; i++) {
         await pocketIndex.addAsset(gemTokenAddresses[i]);
