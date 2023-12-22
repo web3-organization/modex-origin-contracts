@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 import "./interfaces/IMoDexCoinRouter02.sol";
-import "./interfaces/IERC20.sol";
 import "./interfaces/IIndexLP.sol";
 
 contract Register {
@@ -240,11 +239,46 @@ library SafeMath {
     }
     }
 }
+interface IERC20Extended {
+    function totalSupply() external view returns (uint256);
+
+    function decimals() external view returns (uint8);
+
+    function symbol() external view returns (string memory);
+
+    function name() external view returns (string memory);
+
+    function balanceOf(address account) external view returns (uint256);
+
+    function transfer(address recipient, uint256 amount)
+        external
+        returns (bool);
+
+    function allowance(address _owner, address spender)
+        external
+        view
+        returns (uint256);
+
+    function approve(address spender, uint256 amount) external returns (bool);
+
+    function transferFrom(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) external returns (bool);
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(
+        address indexed owner,
+        address indexed spender,
+        uint256 value
+    );
+}
 contract PocketIndex {
     using SafeMath for uint256;
 
     address routerAddress;
-    IERC20 public baseTokenAddress;
+    address public baseTokenAddress;
     IIndexLP public indexLPToken;
     address owner;
     IMoDexCoinRouter02 router;
@@ -273,7 +307,7 @@ contract PocketIndex {
 
     constructor(address _routerAddress, address _baseTokenAddress) {
         routerAddress = _routerAddress;
-        baseTokenAddress = IERC20(_baseTokenAddress);
+        baseTokenAddress = _baseTokenAddress;
         router = IMoDexCoinRouter02(routerAddress);
         owner = msg.sender;
         totalBulkBuys = 0;
@@ -301,18 +335,18 @@ contract PocketIndex {
 
         // Must have some usdts
         require(
-            baseTokenAddress.balanceOf(address(this)) > 0,
+            IERC20Extended(baseTokenAddress).balanceOf(address(this)) > 0,
             "Don't have anything"
         );
 
         // Approve balance to router
-        baseTokenAddress.approve(
+        IERC20Extended(baseTokenAddress).approve(
             routerAddress,
-            baseTokenAddress.balanceOf(address(this))
+            IERC20Extended(baseTokenAddress).balanceOf(address(this))
         );
 
         // Total new balance and LP token supply
-        uint256 totalCurrentBalance = baseTokenAddress.balanceOf(address(this));
+        uint256 totalCurrentBalance = IERC20Extended(baseTokenAddress).balanceOf(address(this));
         if (totalBulkBuys == 0) {
             indexLPToken.mint(address(this), totalCurrentBalance);
         } else {
@@ -325,12 +359,17 @@ contract PocketIndex {
                 totalCurrentWorth
             );
             uint256 denominator = one.sub(ratio);
-            uint256 newTotalLP = totalLp.mul(1000).div(denominator);
-            indexLPToken.mint(address(this), newTotalLP.sub(totalLp));
+
+            if (denominator != 0) {
+                uint256 newTotalLP = totalLp.mul(1000).div(denominator);
+                indexLPToken.mint(address(this), newTotalLP.sub(totalLp));
+            } else {
+                indexLPToken.mint(address(this), totalCurrentBalance);
+            }
         }
 
         // Divide total balance into 10
-        uint256 equalBalance = baseTokenAddress
+        uint256 equalBalance = IERC20Extended(baseTokenAddress)
             .balanceOf(address(this))
             .mul(10)
             .div(100);
@@ -344,7 +383,7 @@ contract PocketIndex {
         // Note current balances of all assets
         for (uint256 j = 0; j < totalAssets; j++) {
             // Get the amount of tokens the contract has
-            currentBalances[j] = IERC20(assets[j].contractAddress)
+            currentBalances[j] = IERC20Extended(assets[j].contractAddress)
                 .balanceOf(address(this));
         }
 
@@ -352,7 +391,7 @@ contract PocketIndex {
         for (uint256 i = 0; i < totalAssets; i++) {
             address[] memory path = new address[](2);
             path[1] = assets[i].contractAddress;
-            path[0] = address(baseTokenAddress);
+            path[0] = baseTokenAddress;
             router.swapExactTokensForTokens(
                 equalBalance,
                 0,
@@ -380,7 +419,7 @@ contract PocketIndex {
             // Each asset
             for (uint256 j = 0; j < totalAssets; j++) {
                 // Get the amount of tokens the user has
-                uint256 assetBalanceOfContract = IERC20(
+                uint256 assetBalanceOfContract = IERC20Extended(
                     assets[j].contractAddress
                 ).balanceOf(address(this)).sub(currentBalances[j]);
                 userBalances[nextBuyers[i]].balances[
@@ -405,9 +444,9 @@ contract PocketIndex {
 
         // Loop and sell each asset
         for (uint256 i = 0; i < totalAssets; i++) {
-            IERC20(assets[i].contractAddress).approve(
+            IERC20Extended(assets[i].contractAddress).approve(
                 routerAddress,
-                IERC20(assets[i].contractAddress).balanceOf(
+                IERC20Extended(assets[i].contractAddress).balanceOf(
                     address(this)
                 )
             );
@@ -416,11 +455,10 @@ contract PocketIndex {
 
     // Sell a user's balance and give him back his usdts
     function disolvePosition() public {
-        require(msg.sender != owner, "Can't be interacted");
-        uint256 balanceBeforeSell = baseTokenAddress.balanceOf(address(this));
+        uint256 balanceBeforeSell = IERC20Extended(baseTokenAddress).balanceOf(address(this));
         uint256 totalAssets = assets.length;
         address[] memory path = new address[](2);
-        path[1] = address(baseTokenAddress);
+        path[1] = baseTokenAddress;
         uint256 userBalance = 0;
         for (uint256 i = 0; i < totalAssets; i++) {
             path[0] = assets[i].contractAddress;
@@ -436,7 +474,7 @@ contract PocketIndex {
             );
         }
 
-        uint256 userUSDTBalance = baseTokenAddress.balanceOf(address(this)).sub(
+        uint256 userUSDTBalance = IERC20Extended(baseTokenAddress).balanceOf(address(this)).sub(
             balanceBeforeSell
         );
         uint256 _managementFee = userUSDTBalance.mul(managementFee).div(1000);
@@ -449,7 +487,7 @@ contract PocketIndex {
         userBalances[msg.sender].usdtBalance += userUSDTBalance
             .sub(_managementFee)
             .sub(_performanceFee);
-        baseTokenAddress.transfer(
+        IERC20Extended(baseTokenAddress).transfer(
             msg.sender,
             userBalances[msg.sender].usdtBalance
         );
@@ -458,24 +496,23 @@ contract PocketIndex {
     }
 
     // Sell a user's balance and give him back his usdts according to his lp tokens
-    function disolveWithLP(uint256 amount) public {
+    function disolveWithLP(uint256 amount, address sender) public {
+        require(sender == msg.sender, "Can't be interacted");
         require(amount > 0, "Amount must be greater than 0");
         require(
-            indexLPToken.balanceOf(msg.sender) >= amount,
+            indexLPToken.balanceOf(sender) >= amount,
             "Must have said balance"
         );
         // calculate total lp balance of user
-        uint256 totalLp = indexLPToken.balanceOf(msg.sender);
-
-        require(msg.sender != owner, "Can't be interacted");
-        uint256 balanceBeforeSell = baseTokenAddress.balanceOf(address(this));
+        uint256 totalLp = indexLPToken.balanceOf(sender);
+        uint256 balanceBeforeSell = IERC20Extended(baseTokenAddress).balanceOf(address(this));
         uint256 totalAssets = assets.length;
         uint256 ratio = amount.mul(100).div(totalLp);
         address[] memory path = new address[](2);
-        path[1] = address(baseTokenAddress);
+        path[1] = baseTokenAddress;
         for (uint256 i = 0; i < totalAssets; i++) {
             path[0] = assets[i].contractAddress;
-            uint256 userBalance = userBalances[msg.sender]
+            uint256 userBalance = userBalances[sender]
                 .balances[assets[i].contractAddress]
                 .mul(ratio)
                 .div(100);
@@ -486,41 +523,41 @@ contract PocketIndex {
                 address(this),
                 block.timestamp + 5
             );
-            userBalances[msg.sender].balances[
+            userBalances[sender].balances[
                 assets[i].contractAddress
             ] -= userBalance;
         }
 
-        uint256 userUSDTBalance = baseTokenAddress.balanceOf(address(this)).sub(
+        uint256 userUSDTBalance = IERC20Extended(baseTokenAddress).balanceOf(address(this)).sub(
             balanceBeforeSell
         );
         uint256 _managementFee = userUSDTBalance.mul(managementFee).div(1000);
         uint256 _performanceFee = userUSDTBalance.mul(performanceFee).div(1000);
 
-        userBalances[msg.sender].usdtBalance += userUSDTBalance
+        userBalances[sender].usdtBalance += userUSDTBalance
             .sub(_managementFee)
             .sub(_performanceFee);
-        baseTokenAddress.transfer(
-            msg.sender,
-            userBalances[msg.sender].usdtBalance
+        IERC20Extended(baseTokenAddress).transfer(
+            sender,
+            userBalances[sender].usdtBalance
         );
 
-        userBalances[msg.sender].usdtBalance = 0;
+        userBalances[sender].usdtBalance = 0;
 
         // Transfer lp tokens to self and burn
-        indexLPToken.transfer(address(this), amount);
+        indexLPToken.transferFrom(sender, address(this), amount);
         indexLPToken.burn(amount);
     }
 
     // New user pitches amount to bulk buy
-    function pitchAmount(uint256 amount) public {
+    function pitchAmount(uint256 amount, address from) public {
         require(
-            baseTokenAddress.balanceOf(msg.sender) >= amount,
+            IERC20Extended(baseTokenAddress).balanceOf(msg.sender) >= amount,
             "Don't have enough amount in e.USDT"
         );
 
         // Transfer the amount to the smart contract
-        baseTokenAddress.transferFrom(msg.sender, address(this), amount);
+        IERC20Extended(baseTokenAddress).transferFrom(from, address(this), amount);
 
         // Increment user USDT balance
         userBalances[msg.sender].usdtBalance += amount;
@@ -536,11 +573,11 @@ contract PocketIndex {
         // Current worth of all assets
         uint256 totalCurrentWorth = 0;
         address[] memory path = new address[](2);
-        path[1] = address(baseTokenAddress);
+        path[1] = baseTokenAddress;
         for (uint256 i = 0; i < assets.length; i++) {
             path[0] = assets[i].contractAddress;
             uint256[] memory amounts = router.getAmountsOut(
-                IERC20(assets[i].contractAddress).balanceOf(
+                IERC20Extended(assets[i].contractAddress).balanceOf(
                     address(this)
                 ),
                 path
@@ -565,7 +602,7 @@ contract PocketIndex {
             amount >= userBalances[user].usdtBalance,
             "Don't have enough amount to withdraw"
         );
-        baseTokenAddress.transfer(user, amount);
+        IERC20Extended(baseTokenAddress).transfer(user, amount);
     }
 
     // Get user's balance for all assets
@@ -612,7 +649,7 @@ contract PocketIndex {
     function getTotalInvestedForAsset(
         address _contractAddress
     ) public view returns (uint256) {
-        return IERC20(_contractAddress).balanceOf(address(this));
+        return IERC20Extended(_contractAddress).balanceOf(address(this));
     }
 
     // set indexLPToken address

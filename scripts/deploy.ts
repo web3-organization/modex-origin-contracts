@@ -29,12 +29,14 @@ async function main() {
     // 4. approve 11 tokens to router
     const gemTokens = ["DiamondToken", "EmberToken", "GarnetteToken", "GLDToken", "JadeToken", "OpalToken", "PearlToken", "RubyToken", "SapphireToken", "SilverToken", "USDTToken"];
     const gemTokenAddresses = [];
+    const gemTokenContracts = [];
     for (let i = 0; i < gemTokens.length; i++) {
         const gemToken = await deployContract(gemTokens[i]);
         await gemToken.approve(router.address, ethers.constants.MaxUint256);
         console.log(`${gemTokens[i]} address: `, gemToken.address);
 
         gemTokenAddresses.push(gemToken.address);
+        gemTokenContracts.push(gemToken);
     }
 
     // 5. add 10 gem tokens and 1 usdt to factory as pairs
@@ -55,8 +57,8 @@ async function main() {
             );
     }
     // 7. deploy pocket index with usdt as base token and router address
-    const pocketIndex = await deployContract("PocketIndex", gemTokenAddresses[10], router.address);
-
+    const pocketIndex = await deployContract("PocketIndex", router.address, gemTokenAddresses[10]);
+    
     // 8. add all 10 gem tokens to pocket index
     for (let i = 0; i < gemTokenAddresses.length - 1; i++) {
         await pocketIndex.addAsset(gemTokenAddresses[i]);
@@ -64,6 +66,9 @@ async function main() {
 
     // 9. deploy lp token
     const lpToken = await deployContract("IndexLPToken", pocketIndex.address);
+
+    // 10. set lp token address in pocket index
+    await pocketIndex.setIndexLPToken(lpToken.address);
 
     // 10. verify all the contracts
     try {
