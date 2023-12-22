@@ -3,23 +3,23 @@ pragma solidity =0.6.6;
 
 import '@uniswap/lib/contracts/libraries/TransferHelper.sol';
 
-import "./interfaces/IQuantumCoinRouter02.sol";
-import "./interfaces/IQuantumCoinFactory.sol";
-import "./libraries/QuantumCoinLibrary.sol";
+import "./interfaces/IMoDexCoinRouter02.sol";
+import "./interfaces/IMoDexCoinFactory.sol";
+import "./libraries/MoDexCoinLibrary.sol";
 import "./libraries/SafeMath.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/IWETH.sol";
 contract Register {
     function register(address _recipient) public returns (uint256 tokenId) {}
 }
-contract QuantumCoinRouter is IQuantumCoinRouter02 {
+contract MoDexCoinRouter is IMoDexCoinRouter02 {
     using SafeMath for uint256;
 
     address public immutable override factory;
     address public immutable override WETH;
 
     modifier ensure(uint256 deadline) {
-        require(deadline >= block.timestamp, "QuantumCoinRouter: EXPIRED");
+        require(deadline >= block.timestamp, "MoDexCoinRouter: EXPIRED");
         _;
     }
 
@@ -44,21 +44,21 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
         uint256 amountBMin
     ) internal virtual returns (uint256 amountA, uint256 amountB) {
         // create the pair if it doesn't exist yet
-        if (IQuantumCoinFactory(factory).getPair(tokenA, tokenB) == address(0)) {
-            IQuantumCoinFactory(factory).createPair(tokenA, tokenB);
+        if (IMoDexCoinFactory(factory).getPair(tokenA, tokenB) == address(0)) {
+            IMoDexCoinFactory(factory).createPair(tokenA, tokenB);
         }
-        (uint256 reserveA, uint256 reserveB) = QuantumCoinLibrary.getReserves(factory, tokenA, tokenB);
+        (uint256 reserveA, uint256 reserveB) = MoDexCoinLibrary.getReserves(factory, tokenA, tokenB);
         if (reserveA == 0 && reserveB == 0) {
             (amountA, amountB) = (amountADesired, amountBDesired);
         } else {
-            uint256 amountBOptimal = QuantumCoinLibrary.quote(amountADesired, reserveA, reserveB);
+            uint256 amountBOptimal = MoDexCoinLibrary.quote(amountADesired, reserveA, reserveB);
             if (amountBOptimal <= amountBDesired) {
-                require(amountBOptimal >= amountBMin, "QuantumCoinRouter: INSUFFICIENT_B_AMOUNT");
+                require(amountBOptimal >= amountBMin, "MoDexCoinRouter: INSUFFICIENT_B_AMOUNT");
                 (amountA, amountB) = (amountADesired, amountBOptimal);
             } else {
-                uint256 amountAOptimal = QuantumCoinLibrary.quote(amountBDesired, reserveB, reserveA);
+                uint256 amountAOptimal = MoDexCoinLibrary.quote(amountBDesired, reserveB, reserveA);
                 assert(amountAOptimal <= amountADesired);
-                require(amountAOptimal >= amountAMin, "QuantumCoinRouter: INSUFFICIENT_A_AMOUNT");
+                require(amountAOptimal >= amountAMin, "MoDexCoinRouter: INSUFFICIENT_A_AMOUNT");
                 (amountA, amountB) = (amountAOptimal, amountBDesired);
             }
         }
@@ -85,10 +85,10 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
         )
     {
         (amountA, amountB) = _addLiquidity(tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin);
-        address pair = QuantumCoinLibrary.pairFor(factory, tokenA, tokenB);
+        address pair = MoDexCoinLibrary.pairFor(factory, tokenA, tokenB);
         TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA);
         TransferHelper.safeTransferFrom(tokenB, msg.sender, pair, amountB);
-        liquidity = IQuantumCoinPair(pair).mint(to);
+        liquidity = IMoDexCoinPair(pair).mint(to);
     }
 
     function addLiquidityETH(
@@ -118,11 +118,11 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
             amountTokenMin,
             amountETHMin
         );
-        address pair = QuantumCoinLibrary.pairFor(factory, token, WETH);
+        address pair = MoDexCoinLibrary.pairFor(factory, token, WETH);
         TransferHelper.safeTransferFrom(token, msg.sender, pair, amountToken);
         IWETH(WETH).deposit{value: amountETH}();
         assert(IWETH(WETH).transfer(pair, amountETH));
-        liquidity = IQuantumCoinPair(pair).mint(to);
+        liquidity = IMoDexCoinPair(pair).mint(to);
         // refund dust eth, if any
         if (msg.value > amountETH) TransferHelper.safeTransferETH(msg.sender, msg.value - amountETH);
     }
@@ -137,13 +137,13 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
         address to,
         uint256 deadline
     ) public virtual override ensure(deadline) returns (uint256 amountA, uint256 amountB) {
-        address pair = QuantumCoinLibrary.pairFor(factory, tokenA, tokenB);
-        IQuantumCoinPair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
-        (uint256 amount0, uint256 amount1) = IQuantumCoinPair(pair).burn(to);
-        (address token0, ) = QuantumCoinLibrary.sortTokens(tokenA, tokenB);
+        address pair = MoDexCoinLibrary.pairFor(factory, tokenA, tokenB);
+        IMoDexCoinPair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
+        (uint256 amount0, uint256 amount1) = IMoDexCoinPair(pair).burn(to);
+        (address token0, ) = MoDexCoinLibrary.sortTokens(tokenA, tokenB);
         (amountA, amountB) = tokenA == token0 ? (amount0, amount1) : (amount1, amount0);
-        require(amountA >= amountAMin, "QuantumCoinRouter: INSUFFICIENT_A_AMOUNT");
-        require(amountB >= amountBMin, "QuantumCoinRouter: INSUFFICIENT_B_AMOUNT");
+        require(amountA >= amountAMin, "MoDexCoinRouter: INSUFFICIENT_A_AMOUNT");
+        require(amountB >= amountBMin, "MoDexCoinRouter: INSUFFICIENT_B_AMOUNT");
     }
 
     function removeLiquidityETH(
@@ -181,9 +181,9 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
         bytes32 r,
         bytes32 s
     ) external virtual override returns (uint256 amountA, uint256 amountB) {
-        address pair = QuantumCoinLibrary.pairFor(factory, tokenA, tokenB);
+        address pair = MoDexCoinLibrary.pairFor(factory, tokenA, tokenB);
         uint256 value = approveMax ? uint256(-1) : liquidity;
-        IQuantumCoinPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        IMoDexCoinPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
         (amountA, amountB) = removeLiquidity(tokenA, tokenB, liquidity, amountAMin, amountBMin, to, deadline);
     }
 
@@ -199,9 +199,9 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
         bytes32 r,
         bytes32 s
     ) external virtual override returns (uint256 amountToken, uint256 amountETH) {
-        address pair = QuantumCoinLibrary.pairFor(factory, token, WETH);
+        address pair = MoDexCoinLibrary.pairFor(factory, token, WETH);
         uint256 value = approveMax ? uint256(-1) : liquidity;
-        IQuantumCoinPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        IMoDexCoinPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
         (amountToken, amountETH) = removeLiquidityETH(token, liquidity, amountTokenMin, amountETHMin, to, deadline);
     }
 
@@ -232,9 +232,9 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
         bytes32 r,
         bytes32 s
     ) external virtual override returns (uint256 amountETH) {
-        address pair = QuantumCoinLibrary.pairFor(factory, token, WETH);
+        address pair = MoDexCoinLibrary.pairFor(factory, token, WETH);
         uint256 value = approveMax ? uint256(-1) : liquidity;
-        IQuantumCoinPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        IMoDexCoinPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
         amountETH = removeLiquidityETHSupportingFeeOnTransferTokens(
             token,
             liquidity,
@@ -254,12 +254,12 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
     ) internal virtual {
         for (uint256 i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
-            (address token0, ) = QuantumCoinLibrary.sortTokens(input, output);
+            (address token0, ) = MoDexCoinLibrary.sortTokens(input, output);
             uint256 amountOut = amounts[i + 1];
             (uint256 amount0Out, uint256 amount1Out) =
                 input == token0 ? (uint256(0), amountOut) : (amountOut, uint256(0));
-            address to = i < path.length - 2 ? QuantumCoinLibrary.pairFor(factory, output, path[i + 2]) : _to;
-            IQuantumCoinPair(QuantumCoinLibrary.pairFor(factory, input, output)).swap(amount0Out, amount1Out, to, new bytes(0));
+            address to = i < path.length - 2 ? MoDexCoinLibrary.pairFor(factory, output, path[i + 2]) : _to;
+            IMoDexCoinPair(MoDexCoinLibrary.pairFor(factory, input, output)).swap(amount0Out, amount1Out, to, new bytes(0));
         }
     }
 
@@ -270,12 +270,12 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
         address to,
         uint256 deadline
     ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        amounts = QuantumCoinLibrary.getAmountsOut(factory, amountIn, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, "QuantumCoinRouter: INSUFFICIENT_OUTPUT_AMOUNT");
+        amounts = MoDexCoinLibrary.getAmountsOut(factory, amountIn, path);
+        require(amounts[amounts.length - 1] >= amountOutMin, "MoDexCoinRouter: INSUFFICIENT_OUTPUT_AMOUNT");
         TransferHelper.safeTransferFrom(
             path[0],
             msg.sender,
-            QuantumCoinLibrary.pairFor(factory, path[0], path[1]),
+            MoDexCoinLibrary.pairFor(factory, path[0], path[1]),
             amounts[0]
         );
         _swap(amounts, path, to);
@@ -288,12 +288,12 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
         address to,
         uint256 deadline
     ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        amounts = QuantumCoinLibrary.getAmountsIn(factory, amountOut, path);
-        require(amounts[0] <= amountInMax, "QuantumCoinRouter: EXCESSIVE_INPUT_AMOUNT");
+        amounts = MoDexCoinLibrary.getAmountsIn(factory, amountOut, path);
+        require(amounts[0] <= amountInMax, "MoDexCoinRouter: EXCESSIVE_INPUT_AMOUNT");
         TransferHelper.safeTransferFrom(
             path[0],
             msg.sender,
-            QuantumCoinLibrary.pairFor(factory, path[0], path[1]),
+            MoDexCoinLibrary.pairFor(factory, path[0], path[1]),
             amounts[0]
         );
         _swap(amounts, path, to);
@@ -305,11 +305,11 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
         address to,
         uint256 deadline
     ) external payable virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        require(path[0] == WETH, "QuantumCoinRouter: INVALID_PATH");
-        amounts = QuantumCoinLibrary.getAmountsOut(factory, msg.value, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, "QuantumCoinRouter: INSUFFICIENT_OUTPUT_AMOUNT");
+        require(path[0] == WETH, "MoDexCoinRouter: INVALID_PATH");
+        amounts = MoDexCoinLibrary.getAmountsOut(factory, msg.value, path);
+        require(amounts[amounts.length - 1] >= amountOutMin, "MoDexCoinRouter: INSUFFICIENT_OUTPUT_AMOUNT");
         IWETH(WETH).deposit{value: amounts[0]}();
-        assert(IWETH(WETH).transfer(QuantumCoinLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
+        assert(IWETH(WETH).transfer(MoDexCoinLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, to);
     }
 
@@ -320,13 +320,13 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
         address to,
         uint256 deadline
     ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        require(path[path.length - 1] == WETH, "QuantumCoinRouter: INVALID_PATH");
-        amounts = QuantumCoinLibrary.getAmountsIn(factory, amountOut, path);
-        require(amounts[0] <= amountInMax, "QuantumCoinRouter: EXCESSIVE_INPUT_AMOUNT");
+        require(path[path.length - 1] == WETH, "MoDexCoinRouter: INVALID_PATH");
+        amounts = MoDexCoinLibrary.getAmountsIn(factory, amountOut, path);
+        require(amounts[0] <= amountInMax, "MoDexCoinRouter: EXCESSIVE_INPUT_AMOUNT");
         TransferHelper.safeTransferFrom(
             path[0],
             msg.sender,
-            QuantumCoinLibrary.pairFor(factory, path[0], path[1]),
+            MoDexCoinLibrary.pairFor(factory, path[0], path[1]),
             amounts[0]
         );
         _swap(amounts, path, address(this));
@@ -341,13 +341,13 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
         address to,
         uint256 deadline
     ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        require(path[path.length - 1] == WETH, "QuantumCoinRouter: INVALID_PATH");
-        amounts = QuantumCoinLibrary.getAmountsOut(factory, amountIn, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, "QuantumCoinRouter: INSUFFICIENT_OUTPUT_AMOUNT");
+        require(path[path.length - 1] == WETH, "MoDexCoinRouter: INVALID_PATH");
+        amounts = MoDexCoinLibrary.getAmountsOut(factory, amountIn, path);
+        require(amounts[amounts.length - 1] >= amountOutMin, "MoDexCoinRouter: INSUFFICIENT_OUTPUT_AMOUNT");
         TransferHelper.safeTransferFrom(
             path[0],
             msg.sender,
-            QuantumCoinLibrary.pairFor(factory, path[0], path[1]),
+            MoDexCoinLibrary.pairFor(factory, path[0], path[1]),
             amounts[0]
         );
         _swap(amounts, path, address(this));
@@ -361,11 +361,11 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
         address to,
         uint256 deadline
     ) external payable virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        require(path[0] == WETH, "QuantumCoinRouter: INVALID_PATH");
-        amounts = QuantumCoinLibrary.getAmountsIn(factory, amountOut, path);
-        require(amounts[0] <= msg.value, "QuantumCoinRouter: EXCESSIVE_INPUT_AMOUNT");
+        require(path[0] == WETH, "MoDexCoinRouter: INVALID_PATH");
+        amounts = MoDexCoinLibrary.getAmountsIn(factory, amountOut, path);
+        require(amounts[0] <= msg.value, "MoDexCoinRouter: EXCESSIVE_INPUT_AMOUNT");
         IWETH(WETH).deposit{value: amounts[0]}();
-        assert(IWETH(WETH).transfer(QuantumCoinLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
+        assert(IWETH(WETH).transfer(MoDexCoinLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, to);
         // refund dust eth, if any
         if (msg.value > amounts[0]) TransferHelper.safeTransferETH(msg.sender, msg.value - amounts[0]);
@@ -376,8 +376,8 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
     function _swapSupportingFeeOnTransferTokens(address[] memory path, address _to) internal virtual {
         for (uint256 i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
-            (address token0, ) = QuantumCoinLibrary.sortTokens(input, output);
-            IQuantumCoinPair pair = IQuantumCoinPair(QuantumCoinLibrary.pairFor(factory, input, output));
+            (address token0, ) = MoDexCoinLibrary.sortTokens(input, output);
+            IMoDexCoinPair pair = IMoDexCoinPair(MoDexCoinLibrary.pairFor(factory, input, output));
             uint256 amountInput;
             uint256 amountOutput;
             {
@@ -386,11 +386,11 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
                 (uint256 reserveInput, uint256 reserveOutput) =
                     input == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
                 amountInput = IERC20(input).balanceOf(address(pair)).sub(reserveInput);
-                amountOutput = QuantumCoinLibrary.getAmountOut(amountInput, reserveInput, reserveOutput);
+                amountOutput = MoDexCoinLibrary.getAmountOut(amountInput, reserveInput, reserveOutput);
             }
             (uint256 amount0Out, uint256 amount1Out) =
                 input == token0 ? (uint256(0), amountOutput) : (amountOutput, uint256(0));
-            address to = i < path.length - 2 ? QuantumCoinLibrary.pairFor(factory, output, path[i + 2]) : _to;
+            address to = i < path.length - 2 ? MoDexCoinLibrary.pairFor(factory, output, path[i + 2]) : _to;
             pair.swap(amount0Out, amount1Out, to, new bytes(0));
         }
     }
@@ -405,14 +405,14 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
         TransferHelper.safeTransferFrom(
             path[0],
             msg.sender,
-            QuantumCoinLibrary.pairFor(factory, path[0], path[1]),
+            MoDexCoinLibrary.pairFor(factory, path[0], path[1]),
             amountIn
         );
         uint256 balanceBefore = IERC20(path[path.length - 1]).balanceOf(to);
         _swapSupportingFeeOnTransferTokens(path, to);
         require(
             IERC20(path[path.length - 1]).balanceOf(to).sub(balanceBefore) >= amountOutMin,
-            "QuantumCoinRouter: INSUFFICIENT_OUTPUT_AMOUNT"
+            "MoDexCoinRouter: INSUFFICIENT_OUTPUT_AMOUNT"
         );
     }
 
@@ -422,15 +422,15 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
         address to,
         uint256 deadline
     ) external payable virtual override ensure(deadline) {
-        require(path[0] == WETH, "QuantumCoinRouter: INVALID_PATH");
+        require(path[0] == WETH, "MoDexCoinRouter: INVALID_PATH");
         uint256 amountIn = msg.value;
         IWETH(WETH).deposit{value: amountIn}();
-        assert(IWETH(WETH).transfer(QuantumCoinLibrary.pairFor(factory, path[0], path[1]), amountIn));
+        assert(IWETH(WETH).transfer(MoDexCoinLibrary.pairFor(factory, path[0], path[1]), amountIn));
         uint256 balanceBefore = IERC20(path[path.length - 1]).balanceOf(to);
         _swapSupportingFeeOnTransferTokens(path, to);
         require(
             IERC20(path[path.length - 1]).balanceOf(to).sub(balanceBefore) >= amountOutMin,
-            "QuantumCoinRouter: INSUFFICIENT_OUTPUT_AMOUNT"
+            "MoDexCoinRouter: INSUFFICIENT_OUTPUT_AMOUNT"
         );
     }
 
@@ -441,16 +441,16 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
         address to,
         uint256 deadline
     ) external virtual override ensure(deadline) {
-        require(path[path.length - 1] == WETH, "QuantumCoinRouter: INVALID_PATH");
+        require(path[path.length - 1] == WETH, "MoDexCoinRouter: INVALID_PATH");
         TransferHelper.safeTransferFrom(
             path[0],
             msg.sender,
-            QuantumCoinLibrary.pairFor(factory, path[0], path[1]),
+            MoDexCoinLibrary.pairFor(factory, path[0], path[1]),
             amountIn
         );
         _swapSupportingFeeOnTransferTokens(path, address(this));
         uint256 amountOut = IERC20(WETH).balanceOf(address(this));
-        require(amountOut >= amountOutMin, "QuantumCoinRouter: INSUFFICIENT_OUTPUT_AMOUNT");
+        require(amountOut >= amountOutMin, "MoDexCoinRouter: INSUFFICIENT_OUTPUT_AMOUNT");
         IWETH(WETH).withdraw(amountOut);
         TransferHelper.safeTransferETH(to, amountOut);
     }
@@ -461,7 +461,7 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
         uint256 reserveA,
         uint256 reserveB
     ) public pure virtual override returns (uint256 amountB) {
-        return QuantumCoinLibrary.quote(amountA, reserveA, reserveB);
+        return MoDexCoinLibrary.quote(amountA, reserveA, reserveB);
     }
 
     function getAmountOut(
@@ -469,7 +469,7 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
         uint256 reserveIn,
         uint256 reserveOut
     ) public pure virtual override returns (uint256 amountOut) {
-        return QuantumCoinLibrary.getAmountOut(amountIn, reserveIn, reserveOut);
+        return MoDexCoinLibrary.getAmountOut(amountIn, reserveIn, reserveOut);
     }
 
     function getAmountIn(
@@ -477,7 +477,7 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
         uint256 reserveIn,
         uint256 reserveOut
     ) public pure virtual override returns (uint256 amountIn) {
-        return QuantumCoinLibrary.getAmountIn(amountOut, reserveIn, reserveOut);
+        return MoDexCoinLibrary.getAmountIn(amountOut, reserveIn, reserveOut);
     }
 
     function getAmountsOut(uint256 amountIn, address[] memory path)
@@ -487,7 +487,7 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
         override
         returns (uint256[] memory amounts)
     {
-        return QuantumCoinLibrary.getAmountsOut(factory, amountIn, path);
+        return MoDexCoinLibrary.getAmountsOut(factory, amountIn, path);
     }
 
     function getAmountsIn(uint256 amountOut, address[] memory path)
@@ -497,6 +497,6 @@ contract QuantumCoinRouter is IQuantumCoinRouter02 {
         override
         returns (uint256[] memory amounts)
     {
-        return QuantumCoinLibrary.getAmountsIn(factory, amountOut, path);
+        return MoDexCoinLibrary.getAmountsIn(factory, amountOut, path);
     }
 }

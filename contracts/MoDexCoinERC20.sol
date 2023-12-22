@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity =0.5.16;
 
-import "./interfaces/IQuantumCoinERC20.sol";
+import "./interfaces/IMoDexCoinERC20.sol";
 import "./libraries/SafeMath.sol";
 
-contract QuantumCoinERC20 is IQuantumCoinERC20 {
+contract MoDexCoinERC20 is IMoDexCoinERC20 {
     using SafeMath for uint256;
 
-    string public constant name = "QuantumCoin";
+    string public constant name = "MoDexCoin";
     string public constant symbol = "QMode";
     uint8 public constant decimals = 18;
     uint256 public totalSupply;
@@ -99,7 +99,7 @@ contract QuantumCoinERC20 is IQuantumCoinERC20 {
         bytes32 r,
         bytes32 s
     ) external {
-        require(deadline >= block.timestamp, "QuantumCoin: EXPIRED");
+        require(deadline >= block.timestamp, "MoDexCoin: EXPIRED");
         bytes32 digest = keccak256(
             abi.encodePacked(
                 "\x19\x01",
@@ -108,7 +108,7 @@ contract QuantumCoinERC20 is IQuantumCoinERC20 {
             )
         );
         address recoveredAddress = ecrecover(digest, v, r, s);
-        require(recoveredAddress != address(0) && recoveredAddress == owner, "QuantumCoin: INVALID_SIGNATURE");
+        require(recoveredAddress != address(0) && recoveredAddress == owner, "MoDexCoin: INVALID_SIGNATURE");
         _approve(owner, spender, value);
     }
 }

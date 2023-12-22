@@ -16,15 +16,15 @@ async function main() {
     const deployer = (await ethers.getSigners())[0];
     // steps:
     // 1. deploy factory
-    const factory = await deployContract("QuantumCoinFactory", deployer.address);
+    const factory = await deployContract("MoDexCoinFactory", deployer.address);
     console.log("Factory address: ", factory.address);
     const pairHash = await factory.INIT_CODE_PAIR_HASH();
     console.log("pair hash", pairHash);
 
     // 2. deploy router
-    const router = await deployContract("QuantumCoinRouter", factory.address, WETHAddress);
+    const router = await deployContract("MoDexCoinRouter", factory.address, WETHAddress);
     console.log("router address: ", router.address);
-    
+
     // 3. deploy 10 gem tokens and 1 usdt
     // 4. approve 11 tokens to router
     const gemTokens = ["DiamondToken", "EmberToken", "GarnetteToken", "GLDToken", "JadeToken", "OpalToken", "PearlToken", "RubyToken", "SapphireToken", "SilverToken", "USDTToken"];
@@ -33,10 +33,10 @@ async function main() {
         const gemToken = await deployContract(gemTokens[i]);
         await gemToken.approve(router.address, ethers.constants.MaxUint256);
         console.log(`${gemTokens[i]} address: `, gemToken.address);
- 
+
         gemTokenAddresses.push(gemToken.address);
     }
-    
+
     // 5. add 10 gem tokens and 1 usdt to factory as pairs
     for (let i = 0; i < gemTokenAddresses.length - 1; i++) {
         await factory.createPair(gemTokenAddresses[i], gemTokenAddresses[10]);
@@ -56,7 +56,7 @@ async function main() {
     }
     // 7. deploy pocket index with usdt as base token and router address
     const pocketIndex = await deployContract("PocketIndex", gemTokenAddresses[10], router.address);
-    
+
     // 8. add all 10 gem tokens to pocket index
     for (let i = 0; i < gemTokenAddresses.length - 1; i++) {
         await pocketIndex.addAsset(gemTokenAddresses[i]);
@@ -73,7 +73,7 @@ async function main() {
                 deployer.address,
             ],
         });
-    
+
     } catch (error) {
         console.log(error);
     }
@@ -89,7 +89,7 @@ async function main() {
     } catch(e) {
         console.log(e);
     }
-    
+
     for (let i = 0; i < gemTokens.length; i++) {
         try {
         await run("verify:verify", {
@@ -118,11 +118,11 @@ async function main() {
                 pocketIndex.address,
             ],
         });
-    
+
     } catch (error) {
         console.log(error);
     }
-    
+
 }
 
 function insertInsideQuotesBeforeComment(filePath: string, searchString: string, modifiedString: string): void {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 
 pragma solidity ^0.8.0;
-import "./interfaces/IQuantumCoinRouter02.sol";
+import "./interfaces/IMoDexCoinRouter02.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/IIndexLP.sol";
 
@@ -247,7 +247,7 @@ contract PocketIndex {
     IERC20 public baseTokenAddress;
     IIndexLP public indexLPToken;
     address owner;
-    IQuantumCoinRouter02 router;
+    IMoDexCoinRouter02 router;
 
     uint256 public lastBuyTime;
     uint256 public managementFee;
@@ -274,7 +274,7 @@ contract PocketIndex {
     constructor(address _routerAddress, address _baseTokenAddress) {
         routerAddress = _routerAddress;
         baseTokenAddress = IERC20(_baseTokenAddress);
-        router = IQuantumCoinRouter02(routerAddress);
+        router = IMoDexCoinRouter02(routerAddress);
         owner = msg.sender;
         totalBulkBuys = 0;
         performanceFee = 1;

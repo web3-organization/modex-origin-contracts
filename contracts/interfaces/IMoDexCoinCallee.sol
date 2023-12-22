@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.5.0;
 
-interface IQuantumCoinCallee {
+interface IMoDexCoinCallee {
     function pancakeCall(
         address sender,
         uint256 amount0,

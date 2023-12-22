@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.6.2;
 
-import "./IQuantumCoinRouter01.sol";
+import "./IMoDexCoinRouter01.sol";
 
-interface IQuantumCoinRouter02 is IQuantumCoinRouter01 {
+interface IMoDexCoinRouter02 is IMoDexCoinRouter01 {
     function removeLiquidityETHSupportingFeeOnTransferTokens(
         address token,
         uint256 liquidity,
