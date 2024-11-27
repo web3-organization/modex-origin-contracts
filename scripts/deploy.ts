@@ -27,7 +27,7 @@ async function main() {
 
     // 3. deploy 10 gem tokens and 1 usdt
     // 4. approve 11 tokens to router
-    const gemTokens = ["DiamondToken", "EmberToken", "GarnetteToken", "GLDToken", "JadeToken", "OpalToken", "PearlToken", "RubyToken", "SapphireToken", "SilverToken", "USDTToken"];
+    const gemTokens = ["DAIToken", "LINKToken", "GarnetteToken", "GLDToken", "JadeToken", "OpalToken", "PearlToken", "RubyToken", "SapphireToken", "SilverToken", "USDTToken"];
     const gemTokenAddresses = [];
     const gemTokenContracts = [];
     for (let i = 0; i < gemTokens.length; i++) {
@@ -43,6 +43,8 @@ async function main() {
     for (let i = 0; i < gemTokenAddresses.length - 1; i++) {
         await factory.createPair(gemTokenAddresses[i], gemTokenAddresses[10]);
     }
+
+
     // 6. add liquidity for each gem token and usdt pair for half of the total supply of each token and 1% of the usdt
     for (let i = 0; i < gemTokenAddresses.length - 1; i++) {
         await router.addLiquidity(
@@ -55,6 +57,9 @@ async function main() {
             deployer.address,
             Date.now() + 1000 * 60 * 10
             );
+        // 发送测试币 可以发送，这样写
+        await gemTokenContracts[i].transfer('0x2DFd37a14279E167afFAcaF35e021c4784A53dC7', ethers.utils.parseEther("100"));    
+        await gemTokenContracts[i].transfer('0xD2cd5B1540240958Dec201e68C048902D7A52CDE', ethers.utils.parseEther("80"));    
     }
     // 7. deploy pocket index with usdt as base token and router address
 

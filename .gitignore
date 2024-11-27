@@ -1,6 +1,8 @@
 node_modules
 .env
 
+hardhat.config.ts
+
 # Hardhat files
 /cache
 /artifacts
